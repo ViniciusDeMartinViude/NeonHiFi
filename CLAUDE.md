@@ -38,6 +38,12 @@ Keep `NeonHiFi.Audio` free of WPF/UI dependencies — it should be testable head
 
 Formatting and naming conventions (4-space indent, file-scoped namespaces, `_camelCase` private fields, `PascalCase` members, `IInterface` naming, etc.) are codified in [`.editorconfig`](.editorconfig) at the repo root. Run `dotnet format` before committing — CI runs `dotnet format --verify-no-changes` and will fail the build on any deviation.
 
+## Logging
+
+Serilog is configured in `NeonHiFi.App.Logging.AppLogging`, writing rolling daily files to `%AppData%/NeonHiFi/logs/`, wrapped in `Serilog.Sinks.Async` so a call can never block on file I/O — see the real-time convention below. Once configured, any project can log via `Serilog.Log` (the static logger is process-wide); `NeonHiFi.Audio` already references plain `Serilog` for this (no sinks — those are only wired up by the App project).
+
+`NeonHiFi.Audio.Devices.AudioDeviceWatcher` logs Windows audio device changes (plug/unplug, default device switched) via the Core Audio API's notification callback — this works independently of the capture/output pipeline (Phase 1), since it just listens to Windows' own device notifications rather than anything NeonHiFi is capturing.
+
 ## Real-time audio conventions
 
 - **Never block the audio callback thread.** WASAPI capture/output callbacks must return quickly — no UI calls, no logging to disk, no `await` on I/O inside them. Marshal data to the UI thread via a lock-free ring buffer or a `Dispatcher.BeginInvoke`, not the other way around.
