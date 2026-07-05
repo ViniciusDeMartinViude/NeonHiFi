@@ -1,4 +1,4 @@
-﻿namespace NeonHiFi.Audio.Tests;
+namespace NeonHiFi.Audio.Tests;
 
 public class SmokeTests
 {
