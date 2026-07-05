@@ -4,9 +4,154 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:NeonHiFi.App"
+        xmlns:controls="clr-namespace:NeonHiFi.App.Controls"
         mc:Ignorable="d"
-        Title="NeonHiFi" Height="450" Width="800">
-    <Grid>
-        <TextBlock Text="NeonHiFi" FontSize="32" HorizontalAlignment="Center" VerticalAlignment="Center" />
-    </Grid>
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        MinWidth="760"
+        MinHeight="700"
+        Background="#FF1A1A1C"
+        Title="NeonHiFi" Height="780" Width="920">
+    <Window.Resources>
+        <!-- Fine tiled vertical stripes simulate a brushed-aluminum surface without needing a bitmap asset. -->
+        <DrawingBrush x:Key="BrushedMetalBrush" TileMode="Tile" Viewport="0,0,3,10" ViewportUnits="Absolute" Stretch="None">
+            <DrawingBrush.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="#FF57575D">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="0,0,3,10" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="#FF65656B">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="0,0,1,10" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingBrush.Drawing>
+        </DrawingBrush>
+
+        <LinearGradientBrush x:Key="ChassisSheenBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#22FFFFFF" Offset="0" />
+            <GradientStop Color="#00000000" Offset="0.4" />
+            <GradientStop Color="#22000000" Offset="1" />
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="WoodAccentBrush" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#FF4E3524" Offset="0" />
+            <GradientStop Color="#FF6B4A31" Offset="0.5" />
+            <GradientStop Color="#FF3E2A1C" Offset="1" />
+        </LinearGradientBrush>
+
+        <SolidColorBrush x:Key="LcdBackgroundBrush" Color="#FF07110A" />
+        <SolidColorBrush x:Key="LcdForegroundBrush" Color="#FF3DFF7A" />
+
+        <Style x:Key="ChromeButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Margin" Value="3,0,0,0" />
+            <Setter Property="Foreground" Value="#FFE4E4E4" />
+            <Setter Property="FontFamily" Value="Consolas" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder" Background="#FF3A3A3E" BorderBrush="#FF141416" BorderThickness="1.5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FF4C4C50" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FF262628" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PanelBorderStyle" TargetType="Border">
+            <Setter Property="BorderBrush" Value="#FF0D0D0E" />
+            <Setter Property="BorderThickness" Value="3" />
+            <Setter Property="Background" Value="#FF232326" />
+        </Style>
+    </Window.Resources>
+
+    <!-- Wood-trimmed outer bezel around a brushed-metal chassis - the classic
+         70s/80s receiver combination of a wood-cased shell with a metal faceplate. -->
+    <Border BorderBrush="{StaticResource WoodAccentBrush}" BorderThickness="10">
+        <Grid Background="{StaticResource BrushedMetalBrush}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Grid.RowSpan="4" Background="{StaticResource ChassisSheenBrush}" IsHitTestVisible="False" />
+
+            <!-- Custom title bar, replacing the default window chrome entirely. -->
+            <Border Grid.Row="0" Background="#FF141416" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid Margin="10,4">
+                    <TextBlock Text="N E O N H I F I" Foreground="#FFCFCFCF" FontFamily="Consolas" FontWeight="Bold"
+                               FontSize="13" VerticalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="_" Style="{StaticResource ChromeButtonStyle}" Click="Minimize_Click" />
+                        <Button Content="X" Style="{StaticResource ChromeButtonStyle}" Click="Close_Click" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Screen row: spectrum "CRT" display + now-playing LCD panel. -->
+            <Border Grid.Row="1" Padding="14,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="240" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource PanelBorderStyle}">
+                        <controls:SpectrumDisplay Height="130" Magnitudes="{Binding Magnitudes}" />
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource PanelBorderStyle}" Background="{StaticResource LcdBackgroundBrush}">
+                        <TextBlock x:Name="NowPlayingText" Text="-- STANDBY --" Foreground="{StaticResource LcdForegroundBrush}"
+                                   FontFamily="Consolas" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   TextAlignment="Center" TextWrapping="Wrap" Margin="8" />
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- VU meters row. -->
+            <Border Grid.Row="2" Padding="14,0,14,12">
+                <Border Style="{StaticResource PanelBorderStyle}" Padding="12">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <controls:VuMeterDisplay Width="230" Height="170" Margin="14,0" Level="{Binding LeftLevel}" PeakLevel="{Binding LeftPeak}" />
+                        <controls:VuMeterDisplay Width="230" Height="170" Margin="14,0" Level="{Binding RightLevel}" PeakLevel="{Binding RightPeak}" />
+                    </StackPanel>
+                </Border>
+            </Border>
+
+            <!-- Graphic EQ row - plain sliders for now, chunky retro fader styling is issue #20. -->
+            <Border Grid.Row="3" Padding="14,0,14,14">
+                <Border Style="{StaticResource PanelBorderStyle}" Padding="16,10">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
+                            <TextBlock Text="PRESET" Foreground="Gainsboro" FontFamily="Consolas" FontSize="11"
+                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <ComboBox x:Name="PresetSelector" Width="140" SelectionChanged="PresetSelector_SelectionChanged" />
+                            <ToggleButton x:Name="BassBoostToggle" Content="BASS" Width="60" Margin="16,0,0,0" Click="DspEffectToggle_Click" />
+                            <ToggleButton x:Name="StereoWidthToggle" Content="WIDE" Width="60" Margin="6,0,0,0" Click="DspEffectToggle_Click" />
+                            <ToggleButton x:Name="WarmthToggle" Content="WARM" Width="60" Margin="6,0,0,0" Click="DspEffectToggle_Click" />
+                        </StackPanel>
+                        <StackPanel x:Name="EqBandsPanel" Orientation="Horizontal" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+            </Border>
+        </Grid>
+    </Border>
 </Window>

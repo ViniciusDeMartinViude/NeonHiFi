@@ -40,17 +40,21 @@ public sealed class VuMeterDisplay : FrameworkElement
     private const double SweepEndDegrees = 45;
     private const double RedZoneStartPosition = 0.83;
 
-    private static readonly (double Position, string Label)[] _scaleTicks =
+    // All tick marks (lines), matching a real VU meter's denser marking near
+    // 0dB. Only a subset carries a text label - at this control's typical
+    // size, labeling every mark (particularly -1/+1/+2, tightly packed near
+    // the top of the sweep) made the text overlap illegibly.
+    private static readonly (double Position, string? Label)[] _scaleTicks =
     [
         (0.00, "-20"),
         (0.20, "-10"),
         (0.35, "-7"),
         (0.50, "-5"),
         (0.65, "-3"),
-        (0.75, "-1"),
+        (0.75, null),
         (0.83, "0"),
-        (0.90, "+1"),
-        (0.95, "+2"),
+        (0.90, null),
+        (0.95, null),
         (1.00, "+3"),
     ];
 
@@ -126,12 +130,17 @@ public sealed class VuMeterDisplay : FrameworkElement
                 var outer = PointOnArc(pivot, radius * 0.95, angle);
                 dc.DrawLine(new Pen(_scaleBrush, 1.5), inner, outer);
 
+                if (label is null)
+                {
+                    continue;
+                }
+
                 var formattedText = new FormattedText(
                     label,
                     CultureInfo.InvariantCulture,
                     FlowDirection.LeftToRight,
                     typeface,
-                    Math.Max(8, radius * 0.11),
+                    Math.Max(7, radius * 0.095),
                     _scaleBrush,
                     1.0);
 
