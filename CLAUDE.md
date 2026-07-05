@@ -18,9 +18,7 @@ NeonHiFi is a Windows desktop app that looks like an 80s hi-fi stereo system (VU
 - **SpotifyAPI-NET** for OAuth + Web API calls (currently-playing polling, album art URLs)
 - Windows-only by design (WASAPI). Do not add cross-platform abstraction layers unless explicitly asked — YAGNI here.
 
-## Intended project structure
-
-(Created in Phase 0 — see Issues. Treat this as the target, not yet-existing fact.)
+## Project structure
 
 ```
 NeonHiFi.sln
@@ -35,6 +33,10 @@ docs/
 ```
 
 Keep `NeonHiFi.Audio` free of WPF/UI dependencies — it should be testable headless. The UI layer subscribes to events/observables it exposes.
+
+## Code style
+
+Formatting and naming conventions (4-space indent, file-scoped namespaces, `_camelCase` private fields, `PascalCase` members, `IInterface` naming, etc.) are codified in [`.editorconfig`](.editorconfig) at the repo root. Run `dotnet format` before committing — CI runs `dotnet format --verify-no-changes` and will fail the build on any deviation.
 
 ## Real-time audio conventions
 
