@@ -19,8 +19,8 @@ public class VuBallisticsTests
     {
         var vu = new VuBallistics();
 
-        // Step to 1.0, advance in small increments totaling one time constant (~300ms).
-        AdvanceSeconds(vu, 1f, 0.3f);
+        // Step to 1.0, advance in small increments totaling one time constant (~120ms).
+        AdvanceSeconds(vu, 1f, 0.12f);
 
         // A first-order exponential response reaches ~63% after one time
         // constant - allow a reasonably wide band around that.
@@ -32,7 +32,7 @@ public class VuBallisticsTests
     {
         var vu = new VuBallistics();
 
-        AdvanceSeconds(vu, 1f, 1.5f); // ~5 time constants
+        AdvanceSeconds(vu, 1f, 0.6f); // ~5 time constants
 
         Assert.True(vu.NeedleLevel > 0.98f, $"expected near-full convergence, got {vu.NeedleLevel}");
     }
@@ -41,7 +41,7 @@ public class VuBallisticsTests
     public void NeedleReleasesGraduallyNotInstantly()
     {
         var vu = new VuBallistics();
-        AdvanceSeconds(vu, 1f, 1.5f); // converge to steady-state at 1.0
+        AdvanceSeconds(vu, 1f, 0.6f); // converge to steady-state at 1.0
 
         vu.Update(0f, 0.001f); // instant drop to silence, single short step
 
