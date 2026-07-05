@@ -1,6 +1,7 @@
 using NeonHiFi.Audio.Capture;
 using NeonHiFi.Audio.Dsp;
 using NeonHiFi.Audio.Output;
+using NeonHiFi.Audio.Visualization;
 
 namespace NeonHiFi.Audio.Pipeline;
 
@@ -24,6 +25,12 @@ namespace NeonHiFi.Audio.Pipeline;
 /// widened signal. All three are optional stretch effects, disabled by
 /// default (Enabled = false, an exact passthrough) - the app works fully
 /// with just the EQ without ever touching them.
+///
+/// SpectrumAnalyzer taps the signal last, right before output, so it sees
+/// exactly what's actually being played. It's a transparent passthrough - it
+/// only copies data off to its own background thread for FFT analysis, never
+/// altering the audio - and (like the equalizer) gets recreated on every
+/// restart since it owns a thread that must be disposed, not just dropped.
 ///
 /// Measured end-to-end latency: ~470-520ms on this machine (avg ~495ms over
 /// 3 runs). Methodology: a marker burst was played into the default render
@@ -64,6 +71,8 @@ public sealed class AudioPipeline : IDisposable
 
     public WarmthEffect? Warmth { get; private set; }
 
+    public SpectrumAnalyzer? SpectrumAnalyzer { get; private set; }
+
     public AudioPipeline()
     {
         _capture.CaptureRestarted += (_, _) => ReconnectOutput();
@@ -99,10 +108,16 @@ public sealed class AudioPipeline : IDisposable
             // provider that's about to be torn down.
             _output.Stop();
             _capture.Stop();
+
+            // SpectrumAnalyzer owns a background thread - dispose it
+            // explicitly or it leaks a thread every restart/stop.
+            SpectrumAnalyzer?.Dispose();
+
             Equalizer = null;
             BassBoost = null;
             StereoWidth = null;
             Warmth = null;
+            SpectrumAnalyzer = null;
             IsRunning = false;
         }
     }
@@ -200,6 +215,12 @@ public sealed class AudioPipeline : IDisposable
 
     private void StartOutputFromCapture()
     {
+        // Dispose any previous analyzer before replacing it - this runs on
+        // both the first Start() (where it's null, a safe no-op) and every
+        // restart via ReconnectOutput (where the old instance is still live
+        // and would otherwise leak its background thread).
+        SpectrumAnalyzer?.Dispose();
+
         var equalizer = new GraphicEqualizer(_capture.Samples!);
         for (var i = 0; i < _bandGains.Length; i++)
         {
@@ -209,12 +230,14 @@ public sealed class AudioPipeline : IDisposable
         var bassBoost = new BassBoostEffect(equalizer) { Enabled = _bassBoostEnabled, GainDecibels = _bassBoostGainDb };
         var stereoWidth = new StereoWidthEffect(bassBoost) { Enabled = _stereoWidthEnabled, Width = _stereoWidthValue };
         var warmth = new WarmthEffect(stereoWidth) { Enabled = _warmthEnabled, Amount = _warmthAmount };
+        var spectrumAnalyzer = new SpectrumAnalyzer(warmth);
 
         Equalizer = equalizer;
         BassBoost = bassBoost;
         StereoWidth = stereoWidth;
         Warmth = warmth;
+        SpectrumAnalyzer = spectrumAnalyzer;
 
-        _output.Start(warmth, _outputDeviceId);
+        _output.Start(spectrumAnalyzer, _outputDeviceId);
     }
 }
