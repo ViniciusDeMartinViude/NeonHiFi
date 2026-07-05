@@ -18,6 +18,13 @@ namespace NeonHiFi.Audio.Pipeline;
 /// new default device has a different sample rate) - <see cref="_bandGains"/>
 /// remembers the user's gain settings across that so they aren't lost.
 ///
+/// The chain after the EQ is BassBoost -> StereoWidth -> Warmth -> output:
+/// tone-shaping (EQ, then the dedicated bass shelf) happens before stereo
+/// imaging, which happens before saturation is added to the final shaped/
+/// widened signal. All three are optional stretch effects, disabled by
+/// default (Enabled = false, an exact passthrough) - the app works fully
+/// with just the EQ without ever touching them.
+///
 /// Measured end-to-end latency: ~470-520ms on this machine (avg ~495ms over
 /// 3 runs). Methodology: a marker burst was played into the default render
 /// device via a separate WasapiOut, and its arrival timed via a second,
@@ -40,9 +47,22 @@ public sealed class AudioPipeline : IDisposable
     private readonly float[] _bandGains = new float[GraphicEqualizer.StandardCenterFrequencies.Length];
     private string? _outputDeviceId;
 
+    private bool _bassBoostEnabled;
+    private float _bassBoostGainDb;
+    private bool _stereoWidthEnabled;
+    private float _stereoWidthValue = 1f;
+    private bool _warmthEnabled;
+    private float _warmthAmount;
+
     public bool IsRunning { get; private set; }
 
     public GraphicEqualizer? Equalizer { get; private set; }
+
+    public BassBoostEffect? BassBoost { get; private set; }
+
+    public StereoWidthEffect? StereoWidth { get; private set; }
+
+    public WarmthEffect? Warmth { get; private set; }
 
     public AudioPipeline()
     {
@@ -80,6 +100,9 @@ public sealed class AudioPipeline : IDisposable
             _output.Stop();
             _capture.Stop();
             Equalizer = null;
+            BassBoost = null;
+            StereoWidth = null;
+            Warmth = null;
             IsRunning = false;
         }
     }
@@ -100,6 +123,51 @@ public sealed class AudioPipeline : IDisposable
             if (Equalizer is not null)
             {
                 Equalizer.Bands[bandIndex].GainDecibels = gainDecibels;
+            }
+        }
+    }
+
+    /// <summary>Enables/adjusts the bass boost shelf, persisting across capture/output restarts.</summary>
+    public void SetBassBoost(bool enabled, float gainDecibels)
+    {
+        lock (_lock)
+        {
+            _bassBoostEnabled = enabled;
+            _bassBoostGainDb = gainDecibels;
+            if (BassBoost is not null)
+            {
+                BassBoost.Enabled = enabled;
+                BassBoost.GainDecibels = gainDecibels;
+            }
+        }
+    }
+
+    /// <summary>Enables/adjusts stereo widening, persisting across capture/output restarts.</summary>
+    public void SetStereoWidth(bool enabled, float width)
+    {
+        lock (_lock)
+        {
+            _stereoWidthEnabled = enabled;
+            _stereoWidthValue = width;
+            if (StereoWidth is not null)
+            {
+                StereoWidth.Enabled = enabled;
+                StereoWidth.Width = width;
+            }
+        }
+    }
+
+    /// <summary>Enables/adjusts the warmth (saturation) effect, persisting across capture/output restarts.</summary>
+    public void SetWarmth(bool enabled, float amount)
+    {
+        lock (_lock)
+        {
+            _warmthEnabled = enabled;
+            _warmthAmount = amount;
+            if (Warmth is not null)
+            {
+                Warmth.Enabled = enabled;
+                Warmth.Amount = amount;
             }
         }
     }
@@ -129,7 +197,15 @@ public sealed class AudioPipeline : IDisposable
             equalizer.Bands[i].GainDecibels = _bandGains[i];
         }
 
+        var bassBoost = new BassBoostEffect(equalizer) { Enabled = _bassBoostEnabled, GainDecibels = _bassBoostGainDb };
+        var stereoWidth = new StereoWidthEffect(bassBoost) { Enabled = _stereoWidthEnabled, Width = _stereoWidthValue };
+        var warmth = new WarmthEffect(stereoWidth) { Enabled = _warmthEnabled, Amount = _warmthAmount };
+
         Equalizer = equalizer;
-        _output.Start(equalizer, _outputDeviceId);
+        BassBoost = bassBoost;
+        StereoWidth = stereoWidth;
+        Warmth = warmth;
+
+        _output.Start(warmth, _outputDeviceId);
     }
 }
