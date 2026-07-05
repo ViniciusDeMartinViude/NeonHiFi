@@ -1,0 +1,96 @@
+using System.Windows.Media;
+using NeonHiFi.Audio.Pipeline;
+
+namespace NeonHiFi.App.ViewModels;
+
+/// <summary>
+/// Polls an AudioPipeline's SpectrumAnalyzer/VuMeter once per composed frame
+/// via CompositionTarget.Rendering - which ties updates to the display's
+/// actual refresh rate (typically 60Hz) rather than an arbitrary timer
+/// interval - and exposes the results as bindable properties for Phase 3's
+/// UI controls.
+///
+/// This is deliberately decoupled from the audio thread in both directions:
+/// GetLatestMagnitudesDb()/GetNeedleLevels()/GetPeakLevels() are thread-safe
+/// snapshot reads (Volatile.Read under the hood) that never block, and this
+/// class only ever calls them from the UI thread's own render callback - it
+/// never waits on, or can be waited on by, the real-time audio path. Reading
+/// a snapshot mid-update just means this frame shows last frame's data,
+/// never a torn read or a stall.
+/// </summary>
+public sealed class VisualizationViewModel : ViewModelBase, IDisposable
+{
+    private readonly AudioPipeline _pipeline;
+
+    private IReadOnlyList<float> _magnitudes = Array.Empty<float>();
+    private float _leftLevel;
+    private float _leftPeak;
+    private float _rightLevel;
+    private float _rightPeak;
+
+    public VisualizationViewModel(AudioPipeline pipeline)
+    {
+        _pipeline = pipeline;
+        CompositionTarget.Rendering += OnRendering;
+    }
+
+    /// <summary>Latest spectrum band magnitudes (dB), for binding to a spectrum display control.</summary>
+    public IReadOnlyList<float> Magnitudes
+    {
+        get => _magnitudes;
+        private set => SetProperty(ref _magnitudes, value);
+    }
+
+    public float LeftLevel
+    {
+        get => _leftLevel;
+        private set => SetProperty(ref _leftLevel, value);
+    }
+
+    public float LeftPeak
+    {
+        get => _leftPeak;
+        private set => SetProperty(ref _leftPeak, value);
+    }
+
+    public float RightLevel
+    {
+        get => _rightLevel;
+        private set => SetProperty(ref _rightLevel, value);
+    }
+
+    public float RightPeak
+    {
+        get => _rightPeak;
+        private set => SetProperty(ref _rightPeak, value);
+    }
+
+    public void Dispose()
+    {
+        CompositionTarget.Rendering -= OnRendering;
+    }
+
+    private void OnRendering(object? sender, EventArgs e)
+    {
+        if (!_pipeline.IsRunning)
+        {
+            return;
+        }
+
+        var spectrum = _pipeline.SpectrumAnalyzer?.GetLatestMagnitudesDb();
+        if (spectrum is not null)
+        {
+            Magnitudes = spectrum;
+        }
+
+        var needles = _pipeline.VuMeter?.GetNeedleLevels();
+        var peaks = _pipeline.VuMeter?.GetPeakLevels();
+        if (needles is { Length: >= 2 } && peaks is { Length: >= 2 })
+        {
+            LeftLevel = needles[0];
+            LeftPeak = peaks[0];
+            RightLevel = needles[1];
+            RightPeak = peaks[1];
+        }
+    }
+}
