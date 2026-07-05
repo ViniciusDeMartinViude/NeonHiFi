@@ -36,7 +36,7 @@ Keep `NeonHiFi.Audio` free of WPF/UI dependencies — it should be testable head
 
 ## Code style
 
-Formatting and naming conventions (4-space indent, file-scoped namespaces, `_camelCase` private fields, `PascalCase` members, `IInterface` naming, etc.) are codified in [`.editorconfig`](.editorconfig) at the repo root. Run `dotnet format` before committing to apply/verify them — CI does not currently enforce this separately, so it's on the honor system for now.
+Formatting and naming conventions (4-space indent, file-scoped namespaces, `_camelCase` private fields, `PascalCase` members, `IInterface` naming, etc.) are codified in [`.editorconfig`](.editorconfig) at the repo root. Run `dotnet format` before committing — CI runs `dotnet format --verify-no-changes` and will fail the build on any deviation.
 
 ## Real-time audio conventions
 
