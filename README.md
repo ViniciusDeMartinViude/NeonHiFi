@@ -1,5 +1,7 @@
 # NeonHiFi
 
+[![Build](https://github.com/ViniciusDeMartinViude/NeonHiFi/actions/workflows/build.yml/badge.svg)](https://github.com/ViniciusDeMartinViude/NeonHiFi/actions/workflows/build.yml)
+
 A Windows desktop app that turns your PC into an 80s-style hi-fi stereo system — VU meters, a graphic equalizer, a spectrum "screen", and a bank of chunky retro buttons — while adding a few things the original hardware never had: a live now-playing display (artist, album art) pulled from Spotify, and real digital signal processing on whatever audio your machine is playing.
 
 > Status: **early development** — architecture and backlog defined, implementation not yet started. See [Issues](../../issues) and [Milestones](../../milestones) for the current plan.
