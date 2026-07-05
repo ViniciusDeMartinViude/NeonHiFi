@@ -26,11 +26,13 @@ namespace NeonHiFi.Audio.Pipeline;
 /// default (Enabled = false, an exact passthrough) - the app works fully
 /// with just the EQ without ever touching them.
 ///
-/// SpectrumAnalyzer taps the signal last, right before output, so it sees
-/// exactly what's actually being played. It's a transparent passthrough - it
-/// only copies data off to its own background thread for FFT analysis, never
-/// altering the audio - and (like the equalizer) gets recreated on every
+/// SpectrumAnalyzer and VuMeter tap the signal last, right before output, so
+/// they see exactly what's actually being played. Both are transparent
+/// passthroughs. SpectrumAnalyzer only copies data off to its own background
+/// thread for FFT analysis and (like the equalizer) gets recreated on every
 /// restart since it owns a thread that must be disposed, not just dropped.
+/// VuMeter's per-block RMS + ballistics are cheap enough to run directly in
+/// Read() with no thread of its own, so it needs no special disposal.
 ///
 /// Measured end-to-end latency: ~470-520ms on this machine (avg ~495ms over
 /// 3 runs). Methodology: a marker burst was played into the default render
@@ -72,6 +74,8 @@ public sealed class AudioPipeline : IDisposable
     public WarmthEffect? Warmth { get; private set; }
 
     public SpectrumAnalyzer? SpectrumAnalyzer { get; private set; }
+
+    public VuMeter? VuMeter { get; private set; }
 
     public AudioPipeline()
     {
@@ -118,6 +122,7 @@ public sealed class AudioPipeline : IDisposable
             StereoWidth = null;
             Warmth = null;
             SpectrumAnalyzer = null;
+            VuMeter = null;
             IsRunning = false;
         }
     }
@@ -231,13 +236,15 @@ public sealed class AudioPipeline : IDisposable
         var stereoWidth = new StereoWidthEffect(bassBoost) { Enabled = _stereoWidthEnabled, Width = _stereoWidthValue };
         var warmth = new WarmthEffect(stereoWidth) { Enabled = _warmthEnabled, Amount = _warmthAmount };
         var spectrumAnalyzer = new SpectrumAnalyzer(warmth);
+        var vuMeter = new VuMeter(spectrumAnalyzer);
 
         Equalizer = equalizer;
         BassBoost = bassBoost;
         StereoWidth = stereoWidth;
         Warmth = warmth;
         SpectrumAnalyzer = spectrumAnalyzer;
+        VuMeter = vuMeter;
 
-        _output.Start(spectrumAnalyzer, _outputDeviceId);
+        _output.Start(vuMeter, _outputDeviceId);
     }
 }
