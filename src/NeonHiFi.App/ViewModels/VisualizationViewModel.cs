@@ -35,6 +35,15 @@ public sealed class VisualizationViewModel : ViewModelBase, IDisposable
     public VisualizationViewModel(AudioPipeline pipeline)
     {
         _pipeline = pipeline;
+
+        // Without this, Magnitudes stays at its Array.Empty<float>() default
+        // until the pipeline has been started and stopped once - the
+        // running-to-stopped reset below never fires on a fresh launch,
+        // since _wasRunning starts false and the pipeline starts stopped too.
+        // That left the spectrum with no bars to draw at all (segment count
+        // of zero), rendering as a blank screen instead of the unlit LED grid.
+        Magnitudes = Enumerable.Repeat(IdleMagnitudeDb, DefaultBandCountBeforeFirstFrame).ToArray();
+
         CompositionTarget.Rendering += OnRendering;
     }
 
