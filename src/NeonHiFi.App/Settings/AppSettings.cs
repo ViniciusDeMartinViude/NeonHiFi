@@ -8,6 +8,9 @@ public class AppSettings
 
     public string EqPresetName { get; set; } = "Flat";
 
+    /// <summary>User-saved EQ presets, keyed by name. Never contains a reserved built-in name - see EqPresetService.SavePreset.</summary>
+    public Dictionary<string, float[]> UserEqPresets { get; set; } = new();
+
     public double WindowWidth { get; set; } = 800;
 
     public double WindowHeight { get; set; } = 450;

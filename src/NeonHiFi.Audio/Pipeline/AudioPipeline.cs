@@ -127,6 +127,15 @@ public sealed class AudioPipeline : IDisposable
         }
     }
 
+    /// <summary>Applies every band gain from an <see cref="EqPreset"/> in one go.</summary>
+    public void ApplyPreset(EqPreset preset)
+    {
+        for (var i = 0; i < preset.BandGains.Count && i < _bandGains.Length; i++)
+        {
+            SetBandGain(i, preset.BandGains[i]);
+        }
+    }
+
     /// <summary>Enables/adjusts the bass boost shelf, persisting across capture/output restarts.</summary>
     public void SetBassBoost(bool enabled, float gainDecibels)
     {
