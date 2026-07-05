@@ -59,7 +59,15 @@ When picking up work:
 
 ## Build & test
 
-Not yet established — the first backlog item (Phase 0) is creating the solution/project scaffolding. Once that lands, this section should be updated with the actual `dotnet build` / `dotnet test` / `dotnet run` commands.
+Solution scaffolding is in place (.NET 10 SDK, `net10.0-windows` for the WPF app, `net10.0` for the libraries/tests). From the repo root:
+
+```
+dotnet build                                  # builds NeonHiFi.sln (App, Audio, Spotify, Audio.Tests)
+dotnet test                                   # runs NeonHiFi.Audio.Tests
+dotnet run --project src/NeonHiFi.App         # launches the WPF app
+```
+
+`NeonHiFi.App` references `NeonHiFi.Audio` and `NeonHiFi.Spotify`. `NeonHiFi.Audio.Tests` references `NeonHiFi.Audio` only. `NeonHiFi.Audio` and `NeonHiFi.Spotify` have no WPF/UI dependencies — keep it that way.
 
 ## Verifying changes
 
