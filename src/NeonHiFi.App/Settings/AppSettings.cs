@@ -11,6 +11,9 @@ public class AppSettings
     /// <summary>User-saved EQ presets, keyed by name. Never contains a reserved built-in name - see EqPresetService.SavePreset.</summary>
     public Dictionary<string, float[]> UserEqPresets { get; set; } = new();
 
+    /// <summary>Text shown in the power-on LED marquee. Only characters in DotMatrixFont render; others show as a blank gap.</summary>
+    public string PowerOnMessage { get; set; } = "Neon HiFi";
+
     public double WindowWidth { get; set; } = 800;
 
     public double WindowHeight { get; set; } = 450;
