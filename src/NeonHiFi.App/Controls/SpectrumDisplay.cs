@@ -68,6 +68,7 @@ public sealed class SpectrumDisplay : FrameworkElement
     private const double MarqueeColumnsPerSecond = 28;
 
     private static readonly Brush _backgroundBrush = Freeze(Color.FromRgb(8, 12, 8));
+    private static readonly Brush _gridLineBrush = Freeze(Color.FromRgb(16, 24, 16));
     private static readonly Brush _unlitSegmentBrush = Freeze(Color.FromRgb(20, 30, 20));
     private static readonly Brush _greenSegmentBrush = Freeze(Color.FromRgb(40, 220, 90));
     private static readonly Brush _yellowSegmentBrush = Freeze(Color.FromRgb(230, 210, 40));
@@ -153,6 +154,14 @@ public sealed class SpectrumDisplay : FrameworkElement
         var segmentSlot = height / segmentCount;
         var segmentHeight = segmentSlot * (1 - SegmentGapFraction);
         var range = MaxValue - MinValue;
+
+        // Faint reference grid (every 3rd segment row) behind the bars, like the
+        // etched gridlines on a real spectrum-analyzer CRT.
+        for (var segment = 0; segment < segmentCount; segment += 3)
+        {
+            var gridY = height - ((segment + 1) * segmentSlot);
+            drawingContext.DrawRectangle(_gridLineBrush, null, new Rect(0, gridY, width, 1));
+        }
 
         for (var bar = 0; bar < barCount; bar++)
         {

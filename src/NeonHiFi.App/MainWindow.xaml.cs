@@ -154,8 +154,11 @@ public partial class MainWindow : Window
         var settings = ((App)Application.Current).Settings;
 
         Width = settings.WindowWidth;
-        Height = settings.WindowHeight;
 
+        // Height is intentionally not restored here: the window uses
+        // SizeToContent="Height" so its height always matches the actual
+        // (Auto-sized) content rather than a persisted value that could
+        // drift from the current layout.
         if (settings.WindowLeft is double left && settings.WindowTop is double top)
         {
             Left = left;
@@ -202,21 +205,26 @@ public partial class MainWindow : Window
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
     /// <summary>
-    /// One vertical slider per graphic EQ band - plain WPF styling for now
-    /// (chunky retro fader look is issue #20), wired live to the pipeline.
+    /// One vertical slider per graphic EQ band, styled via FaderSliderStyle to
+    /// look like a real mixing-console fader (see MainWindow.xaml), wired
+    /// live to the pipeline.
     /// </summary>
     private void BuildEqBandSliders()
     {
+        var faderStyle = (Style)Resources["FaderSliderStyle"];
+
         foreach (var frequency in GraphicEqualizer.StandardCenterFrequencies)
         {
             var bandIndex = _eqSliders.Count;
             var slider = new Slider
             {
+                Style = faderStyle,
                 Orientation = Orientation.Vertical,
                 Minimum = -12,
                 Maximum = 12,
                 Value = 0,
                 Height = 260,
+                Width = 40,
                 TickFrequency = 3,
                 IsSnapToTickEnabled = false,
             };

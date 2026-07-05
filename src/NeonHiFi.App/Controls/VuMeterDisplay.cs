@@ -58,8 +58,8 @@ public sealed class VuMeterDisplay : FrameworkElement
         (1.00, "+3"),
     ];
 
-    private static readonly Brush _faceBrush = Freeze(Color.FromRgb(235, 227, 200));
-    private static readonly Brush _scaleBrush = Freeze(Color.FromRgb(30, 25, 15));
+    private static readonly Brush _faceBrush = BuildFaceBrush();
+    private static readonly Brush _scaleBrush = Freeze(Color.FromRgb(40, 24, 4));
     private static readonly Brush _redZoneBrush = Freeze(Color.FromRgb(190, 40, 30));
     private static readonly Brush _needleBrush = Freeze(Color.FromRgb(20, 15, 10));
     private static readonly Brush _peakDotBrush = Freeze(Color.FromRgb(210, 30, 20));
@@ -184,6 +184,24 @@ public sealed class VuMeterDisplay : FrameworkElement
     private static Brush Freeze(Color color)
     {
         var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
+    }
+
+    /// <summary>Warm amber/gold backlit face, like an incandescent bulb glowing behind the dial - not a flat cream color.</summary>
+    private static Brush BuildFaceBrush()
+    {
+        var brush = new RadialGradientBrush
+        {
+            GradientOrigin = new Point(0.5, 0.62),
+            Center = new Point(0.5, 0.62),
+            RadiusX = 0.75,
+            RadiusY = 0.75,
+        };
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(255, 214, 120), 0.0));
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(232, 175, 68), 0.55));
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(184, 122, 32), 0.85));
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(140, 88, 22), 1.0));
         brush.Freeze();
         return brush;
     }
