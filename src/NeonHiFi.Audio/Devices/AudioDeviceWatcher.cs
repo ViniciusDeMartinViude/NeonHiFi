@@ -19,14 +19,31 @@ public sealed class AudioDeviceWatcher : IMMNotificationClient, IDisposable
         _enumerator.RegisterEndpointNotificationCallback(this);
     }
 
-    public void OnDeviceStateChanged(string deviceId, DeviceState newState) =>
+    /// <summary>
+    /// Raised when the set of active devices may have changed (added, removed,
+    /// or enabled/disabled) - a cue for consumers like a device-picker view
+    /// model to re-enumerate. Not raised for default-device or property
+    /// changes, since those don't affect which devices are listed.
+    /// </summary>
+    public event EventHandler? DevicesChanged;
+
+    public void OnDeviceStateChanged(string deviceId, DeviceState newState)
+    {
         Log.Information("Audio device {DeviceId} state changed to {State}", deviceId, newState);
+        DevicesChanged?.Invoke(this, EventArgs.Empty);
+    }
 
-    public void OnDeviceAdded(string pwstrDeviceId) =>
+    public void OnDeviceAdded(string pwstrDeviceId)
+    {
         Log.Information("Audio device added: {DeviceId}", pwstrDeviceId);
+        DevicesChanged?.Invoke(this, EventArgs.Empty);
+    }
 
-    public void OnDeviceRemoved(string deviceId) =>
+    public void OnDeviceRemoved(string deviceId)
+    {
         Log.Information("Audio device removed: {DeviceId}", deviceId);
+        DevicesChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     public void OnDefaultDeviceChanged(DataFlow flow, Role role, string defaultDeviceId) =>
         Log.Information("Default audio device changed ({Flow}/{Role}): {DeviceId}", flow, role, defaultDeviceId);
