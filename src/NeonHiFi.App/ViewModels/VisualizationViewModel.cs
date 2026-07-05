@@ -20,6 +20,9 @@ namespace NeonHiFi.App.ViewModels;
 /// </summary>
 public sealed class VisualizationViewModel : ViewModelBase, IDisposable
 {
+    private const float IdleMagnitudeDb = -100f;
+    private const int DefaultBandCountBeforeFirstFrame = 24;
+
     private readonly AudioPipeline _pipeline;
 
     private IReadOnlyList<float> _magnitudes = Array.Empty<float>();
@@ -27,10 +30,20 @@ public sealed class VisualizationViewModel : ViewModelBase, IDisposable
     private float _leftPeak;
     private float _rightLevel;
     private float _rightPeak;
+    private bool _wasRunning;
 
     public VisualizationViewModel(AudioPipeline pipeline)
     {
         _pipeline = pipeline;
+
+        // Without this, Magnitudes stays at its Array.Empty<float>() default
+        // until the pipeline has been started and stopped once - the
+        // running-to-stopped reset below never fires on a fresh launch,
+        // since _wasRunning starts false and the pipeline starts stopped too.
+        // That left the spectrum with no bars to draw at all (segment count
+        // of zero), rendering as a blank screen instead of the unlit LED grid.
+        Magnitudes = Enumerable.Repeat(IdleMagnitudeDb, DefaultBandCountBeforeFirstFrame).ToArray();
+
         CompositionTarget.Rendering += OnRendering;
     }
 
@@ -74,8 +87,24 @@ public sealed class VisualizationViewModel : ViewModelBase, IDisposable
     {
         if (!_pipeline.IsRunning)
         {
+            // Only reset once per power-off, not every frame while off -
+            // otherwise this would fight a UI that wants to briefly show
+            // something else (e.g. the marquee) while powered down.
+            if (_wasRunning)
+            {
+                var bandCount = _magnitudes.Count > 0 ? _magnitudes.Count : DefaultBandCountBeforeFirstFrame;
+                Magnitudes = Enumerable.Repeat(IdleMagnitudeDb, bandCount).ToArray();
+                LeftLevel = 0f;
+                LeftPeak = 0f;
+                RightLevel = 0f;
+                RightPeak = 0f;
+                _wasRunning = false;
+            }
+
             return;
         }
+
+        _wasRunning = true;
 
         var spectrum = _pipeline.SpectrumAnalyzer?.GetLatestMagnitudesDb();
         if (spectrum is not null)

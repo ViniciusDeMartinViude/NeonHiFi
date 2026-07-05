@@ -58,10 +58,13 @@ public sealed class VuMeterDisplay : FrameworkElement
         (1.00, "+3"),
     ];
 
-    private static readonly Brush _faceBrush = Freeze(Color.FromRgb(235, 227, 200));
-    private static readonly Brush _scaleBrush = Freeze(Color.FromRgb(30, 25, 15));
+    private static readonly Brush _faceBrush = BuildFaceBrush();
+    private static readonly Brush _hotspotBrush = BuildHotspotBrush();
+    private static readonly Brush _vignetteBrush = BuildVignetteBrush();
+    private static readonly Brush _scaleBrush = Freeze(Color.FromRgb(40, 24, 4));
     private static readonly Brush _redZoneBrush = Freeze(Color.FromRgb(190, 40, 30));
     private static readonly Brush _needleBrush = Freeze(Color.FromRgb(20, 15, 10));
+    private static readonly Brush _needleShadowBrush = Freeze(Color.FromArgb(90, 0, 0, 0));
     private static readonly Brush _peakDotBrush = Freeze(Color.FromRgb(210, 30, 20));
 
     private DrawingGroup? _faceCache;
@@ -102,10 +105,21 @@ public sealed class VuMeterDisplay : FrameworkElement
 
         var peakAngle = AngleForPosition(Math.Clamp(PeakLevel, 0, 1));
         var peakPoint = PointOnArc(pivot, radius * 0.9, peakAngle);
-        drawingContext.DrawEllipse(_peakDotBrush, null, peakPoint, 3, 3);
 
         var needleAngle = AngleForPosition(Math.Clamp(Level, 0, 1));
         var needleTip = PointOnArc(pivot, radius, needleAngle);
+
+        // A faint offset copy drawn first fakes a drop shadow cast by the
+        // needle/peak dot onto the face beneath it - cheaper than a real
+        // Effect, and safe to redraw every frame since it's just two more
+        // primitive draws, not a blur recomputation.
+        const double ShadowOffset = 1.6;
+        var shadowOffsetVector = new Vector(ShadowOffset, ShadowOffset);
+        drawingContext.DrawEllipse(_needleShadowBrush, null, peakPoint + shadowOffsetVector, 3, 3);
+        drawingContext.DrawLine(new Pen(_needleShadowBrush, 2), pivot + shadowOffsetVector, needleTip + shadowOffsetVector);
+        drawingContext.DrawEllipse(_needleShadowBrush, null, pivot + shadowOffsetVector, 4, 4);
+
+        drawingContext.DrawEllipse(_peakDotBrush, null, peakPoint, 3, 3);
         drawingContext.DrawLine(new Pen(_needleBrush, 2), pivot, needleTip);
         drawingContext.DrawEllipse(_needleBrush, null, pivot, 4, 4);
     }
@@ -116,6 +130,11 @@ public sealed class VuMeterDisplay : FrameworkElement
         using (var dc = group.Open())
         {
             dc.DrawRectangle(_faceBrush, null, new Rect(0, 0, width, height));
+
+            // The bulb hotspot is drawn under the ticks/labels but over the
+            // base face color, so the glow reads as coming from behind the
+            // glass rather than sitting on top of it.
+            dc.DrawEllipse(_hotspotBrush, null, new Point(width * 0.5, height * 0.34), width * 0.42, height * 0.4);
 
             var pivot = PivotPoint(width, height);
             var radius = Radius(width, height);
@@ -147,6 +166,11 @@ public sealed class VuMeterDisplay : FrameworkElement
                 var textPoint = PointOnArc(pivot, radius * 0.6, angle);
                 dc.DrawText(formattedText, new Point(textPoint.X - (formattedText.Width / 2), textPoint.Y - (formattedText.Height / 2)));
             }
+
+            // Vignette drawn last, over everything, so the corners/edges of
+            // the face read as sitting slightly recessed behind the bezel
+            // rather than a flat sheet of color.
+            dc.DrawRectangle(_vignetteBrush, null, new Rect(0, 0, width, height));
         }
 
         group.Freeze();
@@ -184,6 +208,52 @@ public sealed class VuMeterDisplay : FrameworkElement
     private static Brush Freeze(Color color)
     {
         var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
+    }
+
+    /// <summary>Warm amber/gold backlit face, like an incandescent bulb glowing behind the dial - not a flat cream color.</summary>
+    private static Brush BuildFaceBrush()
+    {
+        var brush = new RadialGradientBrush
+        {
+            GradientOrigin = new Point(0.5, 0.62),
+            Center = new Point(0.5, 0.62),
+            RadiusX = 0.75,
+            RadiusY = 0.75,
+        };
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(255, 214, 120), 0.0));
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(232, 175, 68), 0.55));
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(184, 122, 32), 0.85));
+        brush.GradientStops.Add(new GradientStop(Color.FromRgb(140, 88, 22), 1.0));
+        brush.Freeze();
+        return brush;
+    }
+
+    /// <summary>A soft, brighter bloom near where a real backlight bulb would sit, fading to fully transparent.</summary>
+    private static Brush BuildHotspotBrush()
+    {
+        var brush = new RadialGradientBrush();
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(150, 255, 244, 214), 0.0));
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(60, 255, 224, 160), 0.5));
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(0, 255, 214, 120), 1.0));
+        brush.Freeze();
+        return brush;
+    }
+
+    /// <summary>Darkens the face's edges/corners so it reads as sitting recessed behind the meter's bezel.</summary>
+    private static Brush BuildVignetteBrush()
+    {
+        var brush = new RadialGradientBrush
+        {
+            GradientOrigin = new Point(0.5, 0.5),
+            Center = new Point(0.5, 0.5),
+            RadiusX = 0.75,
+            RadiusY = 0.75,
+        };
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(0, 0, 0, 0), 0.55));
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(70, 20, 10, 0), 0.85));
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(130, 10, 5, 0), 1.0));
         brush.Freeze();
         return brush;
     }
